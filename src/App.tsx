@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Zone, Gate, Incident, TransitOption, VolunteerTask, StadiumState } from "./types";
 import { initialStadiumState } from "./data/initialState";
+import { applySimulationTick } from "../lib/simulation";
+import { updateIncidentStatus, updateTaskStatus, addIncidentAndTask } from "../lib/state-updates";
 import CommandCenter from "./components/CommandCenter";
 import FanApp from "./components/FanApp";
 import VolunteerApp from "./components/VolunteerApp";
@@ -61,58 +63,23 @@ export default function App() {
     if (!simulationActive) return;
 
     const interval = setInterval(() => {
-      // 1. Mutate Gate loads slightly
-      setGates(prevGates =>
-        prevGates.map(gate => {
-          const delta = Math.floor(Math.random() * 9) - 4; // -4 to +4% change
-          const newLoad = Math.max(10, Math.min(100, gate.currentLoad + delta));
-
-          let status: "open" | "warning" | "closed" = "open";
-          if (newLoad >= 85) status = "warning";
-          if (gate.status === "closed") status = "closed"; // preserve manual closures
-
-          return { ...gate, currentLoad: newLoad, status };
-        })
-      );
-
-      // 2. Mutate Zone counts
-      setZones(prevZones =>
-        prevZones.map(zone => {
-          const countDelta = Math.floor(Math.random() * 300) - 100;
-          const newCount = Math.max(1000, Math.min(zone.capacity, zone.currentCount + countDelta));
-
-          let status: "normal" | "congested" | "critical" = "normal";
-          const loadFactor = newCount / zone.capacity;
-          if (loadFactor >= 0.85) status = "critical";
-          else if (loadFactor >= 0.7) status = "congested";
-
-          return { ...zone, currentCount: newCount, status };
-        })
-      );
-
-      // 3. Mutate Transit eta and status
-      setTransitOptions(prevTransit =>
-        prevTransit.map(t => {
-          const etaDelta = Math.floor(Math.random() * 3) - 1;
-          const newEta = Math.max(1, t.etaMinutes + etaDelta);
-
-          let status = t.status;
-          if (t.capacity > 80) status = "crowded";
-          else if (Math.random() > 0.85) status = "delayed";
-          else status = "normal";
-
-          return {
-            ...t,
-            etaMinutes: newEta,
-            nextDeparture: `${newEta} mins`,
-            status,
-          };
-        })
-      );
+      const currentState: StadiumState = {
+        zones,
+        gates,
+        incidents,
+        transitOptions,
+        volunteerTasks,
+      };
+      
+      const newState = applySimulationTick(currentState);
+      
+      setGates(newState.gates);
+      setZones(newState.zones);
+      setTransitOptions(newState.transitOptions);
     }, 12000);
 
     return () => clearInterval(interval);
-  }, [simulationActive]);
+  }, [simulationActive, zones, gates, incidents, transitOptions, volunteerTasks]);
 
   // Dismiss alert helper
   useEffect(() => {
@@ -125,107 +92,55 @@ export default function App() {
   // Update incident status — now operates on local state directly
   const handleUpdateIncident = useCallback(
     async (id: string, status: Incident["status"], assignedTo?: string) => {
-      setIncidents(prev =>
-        prev.map(inc => {
-          if (inc.id === id) {
-            return {
-              ...inc,
-              status: status || inc.status,
-              assignedTo: assignedTo !== undefined ? assignedTo : inc.assignedTo,
-            };
-          }
-          return inc;
-        })
-      );
-
-      // If acknowledged or dispatched, sync volunteer tasks
-      if (status === "acknowledged" || status === "dispatched") {
-        setVolunteerTasks(prev => {
-          const taskId = `task-${id}`;
-          const taskExists = prev.some(t => t.id === taskId);
-
-          if (!taskExists) {
-            const targetIncident = incidents.find(i => i.id === id);
-            if (targetIncident) {
-              return [
-                ...prev,
-                {
-                  id: taskId,
-                  title: `Respond: ${targetIncident.category} - ${targetIncident.location}`,
-                  zoneId: targetIncident.location.includes("Zone A")
-                    ? "zone-a"
-                    : targetIncident.location.includes("Zone B")
-                      ? "zone-b"
-                      : targetIncident.location.includes("Zone C")
-                        ? "zone-c"
-                        : "zone-d",
-                  description: `ALERT: ${targetIncident.description}. Assigned Unit: ${assignedTo || "Unassigned"}. Protocol: ${targetIncident.aiSuggestedProtocol || "Contact Dispatch"}`,
-                  status: "pending",
-                  createdAt: new Date().toISOString(),
-                },
-              ];
-            }
-          } else {
-            return prev.map(t => {
-              if (t.id === taskId) {
-                return {
-                  ...t,
-                  status: status === "dispatched" ? "in-progress" : "pending",
-                };
-              }
-              return t;
-            });
-          }
-          return prev;
-        });
-      }
-
-      if (status === "resolved") {
-        setVolunteerTasks(prev =>
-          prev.map(t => {
-            if (t.id === `task-${id}`) {
-              return { ...t, status: "completed" };
-            }
-            return t;
-          })
-        );
-      }
+      const currentState: StadiumState = {
+        zones,
+        gates,
+        incidents,
+        transitOptions,
+        volunteerTasks,
+      };
+      
+      const newState = updateIncidentStatus(currentState, id, status, assignedTo);
+      
+      setIncidents(newState.incidents);
+      setVolunteerTasks(newState.volunteerTasks);
     },
-    [incidents]
+    [zones, gates, incidents, transitOptions, volunteerTasks]
   );
 
   // Update volunteer task status — now operates on local state directly
   const handleUpdateTask = useCallback(
     async (id: string, status: VolunteerTask["status"], assignedTo?: string) => {
-      setVolunteerTasks(prev =>
-        prev.map(t => {
-          if (t.id === id) {
-            return { ...t, status, assignedTo: assignedTo || t.assignedTo };
-          }
-          return t;
-        })
-      );
-
-      // If volunteer task completes, sync back to corresponding incident
-      if (id.startsWith("task-") && status === "completed") {
-        const incId = id.replace("task-", "");
-        setIncidents(prev =>
-          prev.map(inc => {
-            if (inc.id === incId) {
-              return { ...inc, status: "resolved" };
-            }
-            return inc;
-          })
-        );
-      }
+      const currentState: StadiumState = {
+        zones,
+        gates,
+        incidents,
+        transitOptions,
+        volunteerTasks,
+      };
+      
+      const newState = updateTaskStatus(currentState, id, status, assignedTo);
+      
+      setVolunteerTasks(newState.volunteerTasks);
+      setIncidents(newState.incidents);
     },
-    []
+    [zones, gates, incidents, transitOptions, volunteerTasks]
   );
 
   // Handle new incident from volunteer app (replaces SSE broadcast)
   const handleNewIncident = useCallback((incident: Incident, task: VolunteerTask) => {
-    setIncidents(prev => [...prev, incident]);
-    setVolunteerTasks(prev => [...prev, task]);
+    const currentState: StadiumState = {
+      zones,
+      gates,
+      incidents,
+      transitOptions,
+      volunteerTasks,
+    };
+    
+    const newState = addIncidentAndTask(currentState, incident, task);
+    
+    setIncidents(newState.incidents);
+    setVolunteerTasks(newState.volunteerTasks);
 
     // Trigger floating alert notification
     setFloatingAlert({
@@ -233,34 +148,24 @@ export default function App() {
       title: `ALERT: New ${incident.category} Incident`,
       desc: `${incident.description} at ${incident.location}`,
     });
-  }, []);
+  }, [zones, gates, incidents, transitOptions, volunteerTasks]);
 
   // Force simulation tick
   const handleForceTick = useCallback(async () => {
-    // Trigger one immediate tick by toggling state updates directly
-    setGates(prevGates =>
-      prevGates.map(gate => {
-        const delta = Math.floor(Math.random() * 9) - 4;
-        const newLoad = Math.max(10, Math.min(100, gate.currentLoad + delta));
-        let status: "open" | "warning" | "closed" = "open";
-        if (newLoad >= 85) status = "warning";
-        if (gate.status === "closed") status = "closed";
-        return { ...gate, currentLoad: newLoad, status };
-      })
-    );
-
-    setZones(prevZones =>
-      prevZones.map(zone => {
-        const countDelta = Math.floor(Math.random() * 300) - 100;
-        const newCount = Math.max(1000, Math.min(zone.capacity, zone.currentCount + countDelta));
-        let status: "normal" | "congested" | "critical" = "normal";
-        const loadFactor = newCount / zone.capacity;
-        if (loadFactor >= 0.85) status = "critical";
-        else if (loadFactor >= 0.7) status = "congested";
-        return { ...zone, currentCount: newCount, status };
-      })
-    );
-  }, []);
+    const currentState: StadiumState = {
+      zones,
+      gates,
+      incidents,
+      transitOptions,
+      volunteerTasks,
+    };
+    
+    const newState = applySimulationTick(currentState);
+    
+    setGates(newState.gates);
+    setZones(newState.zones);
+    setTransitOptions(newState.transitOptions);
+  }, [zones, gates, incidents, transitOptions, volunteerTasks]);
 
   // Toggle simulation
   const handleToggleSimulation = useCallback(async () => {

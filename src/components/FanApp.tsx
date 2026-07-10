@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Zone, Gate, TransitOption, StadiumState } from "../types";
+import { sanitizeInput } from "../../lib/security";
+import { Logger } from "../../lib/logger";
 import {
   Send,
   Bot,
@@ -79,11 +81,15 @@ export default function FanApp({ zones, gates, transitOptions, stadiumState }: F
     const query = textToSend || inputText;
     if (!query.trim()) return;
 
+    // Sanitize input before sending
+    const sanitizedQuery = sanitizeInput(query);
+    if (!sanitizedQuery.trim()) return;
+
     // Add user message
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: "user",
-      text: query,
+      text: sanitizedQuery,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
     setMessages(prev => [...prev, userMsg]);
@@ -96,7 +102,7 @@ export default function FanApp({ zones, gates, transitOptions, stadiumState }: F
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestType: "fan",
-          message: query,
+          message: sanitizedQuery,
           context: {
             language,
             accessibility,
@@ -105,6 +111,10 @@ export default function FanApp({ zones, gates, transitOptions, stadiumState }: F
           },
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
 
@@ -124,8 +134,9 @@ export default function FanApp({ zones, gates, transitOptions, stadiumState }: F
       } else {
         throw new Error(data.error || "Failed API classification");
       }
-    } catch (err: any) {
-      console.error("Fan query error:", err);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      Logger.error("Fan query error", { component: "FanApp" }, error);
       setMessages(prev => [
         ...prev,
         {

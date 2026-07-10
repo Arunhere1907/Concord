@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { GoogleGenAI, Type } from "@google/genai";
 import { AI_MODELS } from "../../lib/constants.js";
+import { Logger } from "../../lib/logger.js";
+import type { Incident, Gate, Zone } from "../../src/types.js";
 
 let ai: GoogleGenAI | null = null;
 const apiKey = process.env.GEMINI_API_KEY;
@@ -14,16 +16,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Accept state from POST body or return generic fallback
     const stadiumState = req.body?.stadiumState;
 
-    const zones = stadiumState?.zones || [];
-    const incidents = stadiumState?.incidents || [];
-    const gates = stadiumState?.gates || [];
+    const zones = (stadiumState?.zones || []) as Zone[];
+    const incidents = (stadiumState?.incidents || []) as Incident[];
+    const gates = (stadiumState?.gates || []) as Gate[];
 
-    const activeIncidents = incidents.filter((i: any) => i.status !== "resolved");
-    const highLoadGates = gates.filter((g: any) => g.currentLoad > 80);
+    const activeIncidents = incidents.filter((i: Incident) => i.status !== "resolved");
+    const highLoadGates = gates.filter((g: Gate) => g.currentLoad > 80);
 
     if (!ai) {
       const congestionZone = zones.find(
-        (z: any) => z.status === "congested" || z.status === "critical"
+        (z: Zone) => z.status === "congested" || z.status === "critical"
       );
       const congestionPct = congestionZone
         ? Math.round((congestionZone.currentCount / congestionZone.capacity) * 100)
@@ -35,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const alerts = [
         highLoadGates.length > 0
-          ? `Monitor ${highLoadGates.map((g: any) => g.name).join(", ")} crowd pacing`
+          ? `Monitor ${highLoadGates.map((g: Gate) => g.name).join(", ")} crowd pacing`
           : "All gates nominal",
         activeIncidents.length > 0
           ? `${activeIncidents.length} incident(s) in progress`
@@ -79,8 +81,9 @@ Return a JSON with structure:
 
     const parsed = JSON.parse(response.text || "{}");
     res.json({ ...parsed, engine: "Gemini 2.0 Flash" });
-  } catch (err: any) {
-    console.error("Error generating ops summary:", err);
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    Logger.error("Error generating ops summary", { endpoint: "/api/ops/situation-summary" }, error);
     res.json({
       summary:
         "Zone B (South) remains highly congested. Active water spill hazard reported at Stairwell 4B is in custodial cleanup.",

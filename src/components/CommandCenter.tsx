@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Zone, Gate, Incident, TransitOption, VolunteerTask, StadiumState } from "../types";
+import { Logger } from "../../lib/logger";
 import StadiumMap from "./StadiumMap";
 import {
   Users,
@@ -75,6 +76,11 @@ export default function CommandCenter({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stadiumState }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setOpsSummary(
         data.summary ||
@@ -84,7 +90,8 @@ export default function CommandCenter({
         data.alerts || ["Monitor Gate B2 crowd load", "Divert incoming fans to Gate B3"]
       );
     } catch (err) {
-      console.error("Ops summary fetch error:", err);
+      const error = err instanceof Error ? err : new Error(String(err));
+      Logger.error("Ops summary fetch error", { component: "CommandCenter" }, error);
     } finally {
       setIsSummaryLoading(false);
     }
@@ -118,13 +125,19 @@ export default function CommandCenter({
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.success) {
         setCopilotResponse(data);
       } else {
-        throw new Error();
+        throw new Error(data.error || 'Request failed');
       }
     } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      Logger.error("Copilot query error", { component: "CommandCenter" }, error);
       setCopilotResponse({
         summary:
           "Copilot response bypass: Secure auxiliary support systems. Prepare direct PA alert. Advise staff at Gates B1 & B2 to execute pace fencing procedures.",

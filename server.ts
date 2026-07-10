@@ -6,6 +6,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { StadiumState, Zone, Gate, Incident, TransitOption, VolunteerTask } from "./src/types.js";
 import { generateLocalFallbacks } from "./lib/fallbacks.js";
+import { applySimulationTick } from "./lib/simulation.js";
+import { updateIncidentStatus, updateTaskStatus, addIncidentAndTask } from "./lib/state-updates.js";
+import { Logger } from "./lib/logger.js";
 import { AI_MODELS } from "./lib/constants.js";
 dotenv.config();
 
@@ -250,7 +253,8 @@ const SOP_DOCS = [
 ];
 
 // Active SSE client connections
-let sseClients: any[] = [];
+import type { Response } from "express";
+let sseClients: Response[] = [];
 
 // Initialize Gemini Client
 let ai: GoogleGenAI | null = null;
@@ -271,13 +275,14 @@ if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
 }
 
 // Helper to broadcast state changes
-function broadcastState(type: string, payload: any) {
+function broadcastState(type: 'stadium_update' | 'new_incident', payload: StadiumState | Incident): void {
   const message = `data: ${JSON.stringify({ type, data: payload })}\n\n`;
   sseClients.forEach(res => {
     try {
       res.write(message);
     } catch (err) {
-      console.error("Error writing to client SSE", err);
+      const error = err instanceof Error ? err : new Error(String(err));
+      Logger.error("Error writing to client SSE", { component: "server" }, error);
     }
   });
 }
@@ -313,55 +318,12 @@ let simulationActive = true;
 function runSimulationTick() {
   if (!simulationActive) return;
 
-  // 1. Mutate Gate loads slightly
-  stadiumState.gates = stadiumState.gates.map(gate => {
-    const delta = Math.floor(Math.random() * 9) - 4; // -4 to +4% change
-    const newLoad = Math.max(10, Math.min(100, gate.currentLoad + delta));
+  const newState = applySimulationTick(stadiumState);
+  
+  stadiumState.gates = newState.gates;
+  stadiumState.zones = newState.zones;
+  stadiumState.transitOptions = newState.transitOptions;
 
-    // Auto-update status
-    let status: "open" | "warning" | "closed" = "open";
-    if (newLoad >= 85) status = "warning";
-    if (gate.status === "closed") status = "closed"; // preserve manual closures
-
-    return { ...gate, currentLoad: newLoad, status };
-  });
-
-  // 2. Mutate Zone counts
-  stadiumState.zones = stadiumState.zones.map(zone => {
-    // Sum gate loads in this zone to estimate count
-    const zoneGates = stadiumState.gates.filter(g => g.zoneId === zone.id);
-    const avgLoad = zoneGates.reduce((sum, g) => sum + g.currentLoad, 0) / zoneGates.length;
-
-    const countDelta = Math.floor(Math.random() * 300) - 100;
-    const newCount = Math.max(1000, Math.min(zone.capacity, zone.currentCount + countDelta));
-
-    let status: "normal" | "congested" | "critical" = "normal";
-    const loadFactor = newCount / zone.capacity;
-    if (loadFactor >= 0.85) status = "critical";
-    else if (loadFactor >= 0.7) status = "congested";
-
-    return { ...zone, currentCount: newCount, status };
-  });
-
-  // 3. Mutate Transit eta and status
-  stadiumState.transitOptions = stadiumState.transitOptions.map(t => {
-    const etaDelta = Math.floor(Math.random() * 3) - 1; // -1 to +1 min
-    const newEta = Math.max(1, t.etaMinutes + etaDelta);
-
-    let status = t.status;
-    if (t.capacity > 80) status = "crowded";
-    else if (Math.random() > 0.85) status = "delayed";
-    else status = "normal";
-
-    return {
-      ...t,
-      etaMinutes: newEta,
-      nextDeparture: `${newEta} mins`,
-      status,
-    };
-  });
-
-  // Occasionally complete tasks or trigger simple simulations
   broadcastState("stadium_update", stadiumState);
 }
 
@@ -385,89 +347,29 @@ app.post("/api/simulation/tick", (req, res) => {
 app.post("/api/incidents/update", (req, res) => {
   const { id, status, assignedTo } = req.body;
 
-  let updated = false;
-  stadiumState.incidents = stadiumState.incidents.map(inc => {
-    if (inc.id === id) {
-      updated = true;
-      return {
-        ...inc,
-        status: status || inc.status,
-        assignedTo: assignedTo !== undefined ? assignedTo : inc.assignedTo,
-      };
-    }
-    return inc;
-  });
-
-  if (updated) {
-    // If acknowledged or dispatched, also reflect in volunteer task queue
-    const targetIncident = stadiumState.incidents.find(i => i.id === id);
-    if (targetIncident) {
-      // Check if task already exists
-      const taskExists = stadiumState.volunteerTasks.some(t => t.id === `task-${id}`);
-      if (!taskExists && (status === "acknowledged" || status === "dispatched")) {
-        stadiumState.volunteerTasks.push({
-          id: `task-${id}`,
-          title: `Respond: ${targetIncident.category} - ${targetIncident.location}`,
-          zoneId: targetIncident.location.includes("Zone A")
-            ? "zone-a"
-            : targetIncident.location.includes("Zone B")
-              ? "zone-b"
-              : targetIncident.location.includes("Zone C")
-                ? "zone-c"
-                : "zone-d",
-          description: `ALERT: ${targetIncident.description}. Assigned Unit: ${assignedTo || "Unassigned"}. Protocol: ${targetIncident.aiSuggestedProtocol || "Contact Dispatch"}`,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-        });
-      } else if (taskExists) {
-        stadiumState.volunteerTasks = stadiumState.volunteerTasks.map(t => {
-          if (t.id === `task-${id}`) {
-            return {
-              ...t,
-              status:
-                status === "resolved"
-                  ? "completed"
-                  : status === "dispatched"
-                    ? "in-progress"
-                    : "pending",
-            };
-          }
-          return t;
-        });
-      }
-    }
-
-    broadcastState("stadium_update", stadiumState);
-    res.json({ success: true, state: stadiumState });
-  } else {
+  const incident = stadiumState.incidents.find(inc => inc.id === id);
+  if (!incident) {
     res.status(404).json({ error: "Incident not found" });
+    return;
   }
+
+  const newState = updateIncidentStatus(stadiumState, id, status, assignedTo);
+  
+  stadiumState.incidents = newState.incidents;
+  stadiumState.volunteerTasks = newState.volunteerTasks;
+
+  broadcastState("stadium_update", stadiumState);
+  res.json({ success: true, state: stadiumState });
 });
 
 // Update volunteer tasks directly
 app.post("/api/tasks/update", (req, res) => {
   const { id, status, assignedTo } = req.body;
-  stadiumState.volunteerTasks = stadiumState.volunteerTasks.map(t => {
-    if (t.id === id) {
-      return {
-        ...t,
-        status,
-        assignedTo: assignedTo || t.assignedTo,
-      };
-    }
-    return t;
-  });
-
-  // If volunteer task completes, sync back to corresponding incident if exists
-  if (id.startsWith("task-") && status === "completed") {
-    const incId = id.replace("task-", "");
-    stadiumState.incidents = stadiumState.incidents.map(inc => {
-      if (inc.id === incId) {
-        return { ...inc, status: "resolved" };
-      }
-      return inc;
-    });
-  }
+  
+  const newState = updateTaskStatus(stadiumState, id, status, assignedTo);
+  
+  stadiumState.volunteerTasks = newState.volunteerTasks;
+  stadiumState.incidents = newState.incidents;
 
   broadcastState("stadium_update", stadiumState);
   res.json({ success: true, state: stadiumState });
@@ -687,15 +589,16 @@ You must return a JSON object with EXACTLY the following structure:
     } else {
       res.status(400).json({ error: "Unsupported requestType" });
     }
-  } catch (error: any) {
-    console.error("Orchestrator error:", error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    Logger.error("Orchestrator error", { endpoint: "/api/orchestrator", requestType }, error instanceof Error ? error : undefined);
     // Graceful fallback on API error/rate-limit
     const fallback = generateLocalFallbacks(requestType, message, context);
     res.json({
       success: true,
       aiEngine: "Gemini API Error (Graceful Local Fallback Active)",
       ...fallback,
-      metaError: error?.message || "Transient model error",
+      metaError: errorMessage,
     });
   }
 });
@@ -750,8 +653,9 @@ Return a JSON with structure:
 
     const parsed = JSON.parse(response.text || "{}");
     res.json({ ...parsed, engine: "Gemini 3.5 Flash" });
-  } catch (err: any) {
-    console.error("Error generating ops summary:", err);
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    Logger.error("Error generating ops summary", { endpoint: "/api/ops/situation-summary" }, error);
     res.json({
       summary:
         "Zone B (South) remains highly congested. Active water spill hazard reported at Stairwell 4B is in custodial cleanup.",

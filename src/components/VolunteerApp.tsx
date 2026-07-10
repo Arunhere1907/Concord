@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Zone, Gate, VolunteerTask, Incident } from "../types";
+import { sanitizeInput } from "../../lib/security";
+import { Logger } from "../../lib/logger";
 import {
   Send,
   User,
@@ -90,6 +92,10 @@ export default function VolunteerApp({
     e.preventDefault();
     if (!reportText.trim()) return;
 
+    // Sanitize input before sending
+    const sanitizedReport = sanitizeInput(reportText);
+    if (!sanitizedReport.trim()) return;
+
     setIsSubmitting(true);
     setTriageResult(null);
 
@@ -99,13 +105,17 @@ export default function VolunteerApp({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestType: "volunteer",
-          message: reportText,
+          message: sanitizedReport,
           context: {
             location: reportLocation,
             userId: "Vol_Field_341",
           },
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
       if (data.success) {
@@ -117,7 +127,7 @@ export default function VolunteerApp({
           reportedBy: "Vol_Field_341",
           category: data.category,
           severity: data.severity,
-          description: reportText,
+          description: sanitizedReport,
           status: "reported",
           location: reportLocation,
           createdAt: new Date().toISOString(),
@@ -135,7 +145,7 @@ export default function VolunteerApp({
               : reportLocation.includes("Zone C")
                 ? "zone-c"
                 : "zone-d",
-          description: `Field Alert: ${reportText}. Location: ${reportLocation}. Protocol: ${data.aiSuggestedProtocol}`,
+          description: `Field Alert: ${sanitizedReport}. Location: ${reportLocation}. Protocol: ${data.aiSuggestedProtocol}`,
           status: "pending",
           createdAt: new Date().toISOString(),
         };
@@ -149,8 +159,9 @@ export default function VolunteerApp({
       } else {
         throw new Error(data.error || "Triage failed");
       }
-    } catch (err: any) {
-      console.error("Triage Error:", err);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      Logger.error("Triage Error", { component: "VolunteerApp" }, error);
       // fallback
       setTriageResult({
         category: "Facilities",
@@ -186,13 +197,19 @@ export default function VolunteerApp({
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.success) {
         setSopAnswer(data.summary + "\n\nSteps:\n" + (data.steps ? data.steps.join("\n") : ""));
       } else {
-        throw new Error();
+        throw new Error(data.error || 'Request failed');
       }
     } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      Logger.error("SOP search error", { component: "VolunteerApp" }, error);
       setSopAnswer(
         "General protocol guidelines: Keep calm. Secure perimeter and notify Command Center. Ensure direct paths are open for emergency dispatch teams."
       );
