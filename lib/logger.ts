@@ -3,7 +3,7 @@
  * Provides structured logging with context
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogContext {
   component?: string;
@@ -23,25 +23,25 @@ export class Logger {
       level,
       message,
       ...context,
-      ...(error && { 
-        error: { 
-          message: error.message, 
+      ...(error && {
+        error: {
+          message: error.message,
           stack: error.stack,
           name: error.name,
-        } 
+        },
       }),
     };
 
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === "production") {
       // In production, output structured JSON for log aggregation services
       console.log(JSON.stringify(logEntry));
     } else {
       // In development, use human-readable format
-      const consoleMethod = level === 'debug' ? 'log' : level;
+      const consoleMethod = level === "debug" ? "log" : level;
       console[consoleMethod](
         `[${timestamp}] ${level.toUpperCase()}: ${message}`,
-        context || '',
-        error || ''
+        context || "",
+        error || ""
       );
     }
   }
@@ -50,27 +50,27 @@ export class Logger {
    * Log an error with optional context and Error object
    */
   static error(message: string, context?: LogContext, error?: Error): void {
-    this.log('error', message, context, error);
+    this.log("error", message, context, error);
   }
 
   /**
    * Log a warning with optional context
    */
   static warn(message: string, context?: LogContext): void {
-    this.log('warn', message, context);
+    this.log("warn", message, context);
   }
 
   /**
    * Log an informational message with optional context
    */
   static info(message: string, context?: LogContext): void {
-    this.log('info', message, context);
+    this.log("info", message, context);
   }
 
   /**
    * Log a debug message with optional context
    */
   static debug(message: string, context?: LogContext): void {
-    this.log('debug', message, context);
+    this.log("debug", message, context);
   }
 }

@@ -205,7 +205,7 @@ export default function VolunteerApp({
       if (data.success) {
         setSopAnswer(data.summary + "\n\nSteps:\n" + (data.steps ? data.steps.join("\n") : ""));
       } else {
-        throw new Error(data.error || 'Request failed');
+        throw new Error(data.error || "Request failed");
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));

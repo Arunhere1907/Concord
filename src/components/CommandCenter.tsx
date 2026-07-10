@@ -76,11 +76,11 @@ export default function CommandCenter({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stadiumState }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       setOpsSummary(
         data.summary ||
@@ -133,7 +133,7 @@ export default function CommandCenter({
       if (data.success) {
         setCopilotResponse(data);
       } else {
-        throw new Error(data.error || 'Request failed');
+        throw new Error(data.error || "Request failed");
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));

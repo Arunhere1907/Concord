@@ -275,7 +275,10 @@ if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
 }
 
 // Helper to broadcast state changes
-function broadcastState(type: 'stadium_update' | 'new_incident', payload: StadiumState | Incident): void {
+function broadcastState(
+  type: "stadium_update" | "new_incident",
+  payload: StadiumState | Incident
+): void {
   const message = `data: ${JSON.stringify({ type, data: payload })}\n\n`;
   sseClients.forEach(res => {
     try {
@@ -319,7 +322,7 @@ function runSimulationTick() {
   if (!simulationActive) return;
 
   const newState = applySimulationTick(stadiumState);
-  
+
   stadiumState.gates = newState.gates;
   stadiumState.zones = newState.zones;
   stadiumState.transitOptions = newState.transitOptions;
@@ -354,7 +357,7 @@ app.post("/api/incidents/update", (req, res) => {
   }
 
   const newState = updateIncidentStatus(stadiumState, id, status, assignedTo);
-  
+
   stadiumState.incidents = newState.incidents;
   stadiumState.volunteerTasks = newState.volunteerTasks;
 
@@ -365,9 +368,9 @@ app.post("/api/incidents/update", (req, res) => {
 // Update volunteer tasks directly
 app.post("/api/tasks/update", (req, res) => {
   const { id, status, assignedTo } = req.body;
-  
+
   const newState = updateTaskStatus(stadiumState, id, status, assignedTo);
-  
+
   stadiumState.volunteerTasks = newState.volunteerTasks;
   stadiumState.incidents = newState.incidents;
 
@@ -591,7 +594,11 @@ You must return a JSON object with EXACTLY the following structure:
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    Logger.error("Orchestrator error", { endpoint: "/api/orchestrator", requestType }, error instanceof Error ? error : undefined);
+    Logger.error(
+      "Orchestrator error",
+      { endpoint: "/api/orchestrator", requestType },
+      error instanceof Error ? error : undefined
+    );
     // Graceful fallback on API error/rate-limit
     const fallback = generateLocalFallbacks(requestType, message, context);
     res.json({

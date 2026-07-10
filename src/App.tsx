@@ -70,9 +70,9 @@ export default function App() {
         transitOptions,
         volunteerTasks,
       };
-      
+
       const newState = applySimulationTick(currentState);
-      
+
       setGates(newState.gates);
       setZones(newState.zones);
       setTransitOptions(newState.transitOptions);
@@ -99,9 +99,9 @@ export default function App() {
         transitOptions,
         volunteerTasks,
       };
-      
+
       const newState = updateIncidentStatus(currentState, id, status, assignedTo);
-      
+
       setIncidents(newState.incidents);
       setVolunteerTasks(newState.volunteerTasks);
     },
@@ -118,9 +118,9 @@ export default function App() {
         transitOptions,
         volunteerTasks,
       };
-      
+
       const newState = updateTaskStatus(currentState, id, status, assignedTo);
-      
+
       setVolunteerTasks(newState.volunteerTasks);
       setIncidents(newState.incidents);
     },
@@ -128,27 +128,30 @@ export default function App() {
   );
 
   // Handle new incident from volunteer app (replaces SSE broadcast)
-  const handleNewIncident = useCallback((incident: Incident, task: VolunteerTask) => {
-    const currentState: StadiumState = {
-      zones,
-      gates,
-      incidents,
-      transitOptions,
-      volunteerTasks,
-    };
-    
-    const newState = addIncidentAndTask(currentState, incident, task);
-    
-    setIncidents(newState.incidents);
-    setVolunteerTasks(newState.volunteerTasks);
+  const handleNewIncident = useCallback(
+    (incident: Incident, task: VolunteerTask) => {
+      const currentState: StadiumState = {
+        zones,
+        gates,
+        incidents,
+        transitOptions,
+        volunteerTasks,
+      };
 
-    // Trigger floating alert notification
-    setFloatingAlert({
-      id: incident.id,
-      title: `ALERT: New ${incident.category} Incident`,
-      desc: `${incident.description} at ${incident.location}`,
-    });
-  }, [zones, gates, incidents, transitOptions, volunteerTasks]);
+      const newState = addIncidentAndTask(currentState, incident, task);
+
+      setIncidents(newState.incidents);
+      setVolunteerTasks(newState.volunteerTasks);
+
+      // Trigger floating alert notification
+      setFloatingAlert({
+        id: incident.id,
+        title: `ALERT: New ${incident.category} Incident`,
+        desc: `${incident.description} at ${incident.location}`,
+      });
+    },
+    [zones, gates, incidents, transitOptions, volunteerTasks]
+  );
 
   // Force simulation tick
   const handleForceTick = useCallback(async () => {
@@ -159,9 +162,9 @@ export default function App() {
       transitOptions,
       volunteerTasks,
     };
-    
+
     const newState = applySimulationTick(currentState);
-    
+
     setGates(newState.gates);
     setZones(newState.zones);
     setTransitOptions(newState.transitOptions);

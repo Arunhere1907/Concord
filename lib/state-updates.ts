@@ -3,7 +3,7 @@
  * Used by both client (App.tsx) and server (server.ts)
  */
 
-import type { Incident, VolunteerTask, StadiumState } from '../src/types';
+import type { Incident, VolunteerTask, StadiumState } from "../src/types";
 
 /**
  * Infer zone ID from location string
@@ -33,7 +33,7 @@ function createTaskFromIncident(incident: Incident, assignedTo?: string): Volunt
 
 /**
  * Update an incident's status and sync with volunteer tasks
- * 
+ *
  * @param state - Current stadium state
  * @param incidentId - ID of incident to update
  * @param status - New status for the incident
@@ -43,14 +43,12 @@ function createTaskFromIncident(incident: Incident, assignedTo?: string): Volunt
 export function updateIncidentStatus(
   state: StadiumState,
   incidentId: string,
-  status: Incident['status'],
+  status: Incident["status"],
   assignedTo?: string
 ): StadiumState {
   // Update incident
   const incidents = state.incidents.map(inc =>
-    inc.id === incidentId
-      ? { ...inc, status, assignedTo: assignedTo ?? inc.assignedTo }
-      : inc
+    inc.id === incidentId ? { ...inc, status, assignedTo: assignedTo ?? inc.assignedTo } : inc
   );
 
   // Find the updated incident
@@ -64,17 +62,15 @@ export function updateIncidentStatus(
   const taskId = `task-${incidentId}`;
   const taskExists = volunteerTasks.some(t => t.id === taskId);
 
-  if ((status === 'acknowledged' || status === 'dispatched') && !taskExists) {
+  if ((status === "acknowledged" || status === "dispatched") && !taskExists) {
     // Create new task for this incident
     volunteerTasks.push(createTaskFromIncident(updatedIncident, assignedTo));
   } else if (taskExists) {
     // Update existing task status
     volunteerTasks = volunteerTasks.map(t => {
       if (t.id === taskId) {
-        const taskStatus: VolunteerTask['status'] =
-          status === 'resolved' ? 'completed' :
-          status === 'dispatched' ? 'in-progress' :
-          'pending';
+        const taskStatus: VolunteerTask["status"] =
+          status === "resolved" ? "completed" : status === "dispatched" ? "in-progress" : "pending";
         return { ...t, status: taskStatus, assignedTo: assignedTo ?? t.assignedTo };
       }
       return t;
@@ -90,7 +86,7 @@ export function updateIncidentStatus(
 
 /**
  * Update a volunteer task's status and sync with incidents
- * 
+ *
  * @param state - Current stadium state
  * @param taskId - ID of task to update
  * @param status - New status for the task
@@ -100,24 +96,20 @@ export function updateIncidentStatus(
 export function updateTaskStatus(
   state: StadiumState,
   taskId: string,
-  status: VolunteerTask['status'],
+  status: VolunteerTask["status"],
   assignedTo?: string
 ): StadiumState {
   // Update task
   const volunteerTasks = state.volunteerTasks.map(t =>
-    t.id === taskId
-      ? { ...t, status, assignedTo: assignedTo ?? t.assignedTo }
-      : t
+    t.id === taskId ? { ...t, status, assignedTo: assignedTo ?? t.assignedTo } : t
   );
 
   // If task is completed and linked to incident, resolve the incident
   let incidents = state.incidents;
-  if (taskId.startsWith('task-') && status === 'completed') {
-    const incidentId = taskId.replace('task-', '');
+  if (taskId.startsWith("task-") && status === "completed") {
+    const incidentId = taskId.replace("task-", "");
     incidents = incidents.map(inc =>
-      inc.id === incidentId
-        ? { ...inc, status: 'resolved' }
-        : inc
+      inc.id === incidentId ? { ...inc, status: "resolved" } : inc
     );
   }
 
@@ -130,7 +122,7 @@ export function updateTaskStatus(
 
 /**
  * Add a new incident and corresponding task to the state
- * 
+ *
  * @param state - Current stadium state
  * @param incident - New incident to add
  * @param task - New task to add

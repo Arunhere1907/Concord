@@ -3,12 +3,12 @@
  * Used by both client (App.tsx) and server (server.ts)
  */
 
-import type { StadiumState, Gate, Zone, TransitOption } from '../src/types';
+import type { StadiumState, Gate, Zone, TransitOption } from "../src/types";
 
 /**
  * Apply a single simulation tick to the stadium state
  * Mutates gate loads, zone counts, and transit ETAs randomly
- * 
+ *
  * @param state - Current stadium state
  * @returns New stadium state with simulated changes
  */
