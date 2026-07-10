@@ -56,7 +56,7 @@ describe("Cache - Basic Operations", () => {
 describe("Cache - TTL and Expiration", () => {
   beforeEach(() => {
     faqCache.clear();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
   });
 
   afterEach(() => {
@@ -113,7 +113,7 @@ describe("Cache - TTL and Expiration", () => {
 describe("Cache - Cleanup", () => {
   beforeEach(() => {
     faqCache.clear();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
   });
 
   afterEach(() => {
