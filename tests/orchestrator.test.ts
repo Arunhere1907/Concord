@@ -115,13 +115,13 @@ describe("Orchestrator Logic - Operations Queries", () => {
 
 describe("Input Validation", () => {
   it("should reject empty messages", () => {
-    const message = "";
+    const message: string = "";
     const isValid = message && message.trim().length > 0;
     expect(isValid).toBe(false);
   });
 
   it("should reject missing requestType", () => {
-    const requestType = undefined;
+    const requestType: string | undefined = undefined;
     const isValid = requestType && ["volunteer", "fan", "ops"].includes(requestType);
     expect(isValid).toBe(false);
   });
