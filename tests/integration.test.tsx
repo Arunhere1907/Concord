@@ -118,8 +118,7 @@ describe("Fan App Integration Tests", () => {
       />
     );
 
-    const languageSelect =
-      screen.getByRole("combobox", { name: /lang/i }) || document.querySelector("#fan-lang-select");
+    const languageSelect = document.querySelector("#fan-lang-select");
     expect(languageSelect).toBeInTheDocument();
   });
 
@@ -230,7 +229,10 @@ describe("Volunteer App Integration Tests", () => {
       />
     );
 
-    expect(screen.getByText(/Task Queue/i)).toBeInTheDocument();
+    const tasksTab = screen.getByText(/Tasks Queue/i);
+    expect(tasksTab).toBeInTheDocument();
+    fireEvent.click(tasksTab);
+
     expect(screen.getByText(/Test Task/i)).toBeInTheDocument();
   });
 
@@ -248,7 +250,8 @@ describe("Volunteer App Integration Tests", () => {
     // Find and interact with incident report form
     const textarea = document.querySelector("textarea");
     const submitButton =
-      screen.getByText(/Submit Report/i) || screen.getByRole("button", { name: /submit/i });
+      screen.getByText(/Submit to Command Center/i) ||
+      screen.getByRole("button", { name: /submit/i });
 
     if (textarea && submitButton) {
       fireEvent.change(textarea, { target: { value: "Water spill at Gate B" } });

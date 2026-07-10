@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { GoogleGenAI, Type } from "@google/genai";
+import { AI_MODELS } from "../../lib/constants.js";
 
 let ai: GoogleGenAI | null = null;
 const apiKey = process.env.GEMINI_API_KEY;
@@ -60,7 +61,7 @@ Return a JSON with structure:
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: AI_MODELS.GEMINI_FLASH,
       contents: "Generate current sitrep overview line.",
       config: {
         systemInstruction,

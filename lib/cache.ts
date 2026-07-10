@@ -155,13 +155,13 @@ export function isCacheableQuery(requestType: string, message: string): boolean 
 
   // Common FAQ patterns that are safe to cache
   const faqPatterns = [
-    /where.*restroom/i,
-    /where.*bathroom/i,
-    /where.*toilet/i,
-    /nearest.*food/i,
-    /nearest.*water/i,
-    /how.*get.*section/i,
-    /where.*parking/i,
+    /restroom/i,
+    /bathroom/i,
+    /toilet/i,
+    /food/i,
+    /water/i,
+    /section/i,
+    /parking/i,
     /exit/i,
     /metro/i,
     /transit/i,

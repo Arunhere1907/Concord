@@ -5,7 +5,8 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { StadiumState, Zone, Gate, Incident, TransitOption, VolunteerTask } from "./src/types.js";
-
+import { generateLocalFallbacks } from "./lib/fallbacks.js";
+import { AI_MODELS } from "./lib/constants.js";
 dotenv.config();
 
 const app = express();
@@ -472,142 +473,6 @@ app.post("/api/tasks/update", (req, res) => {
   res.json({ success: true, state: stadiumState });
 });
 
-// Rule-based fallbacks in case Gemini is not configured/unreachable
-function generateLocalFallbacks(requestType: string, message: string, context: any) {
-  const normalizedMsg = message.toLowerCase();
-
-  if (requestType === "volunteer") {
-    let category: "Medical" | "Safety" | "Facilities" | "Security" | "Crowd" = "Safety";
-    let severity: "Low" | "Medium" | "High" | "Critical" = "Medium";
-    let assignedTo = "General Staff";
-    let title = "Staff Alert";
-    let aiSuggestedProtocol = "Standard field precaution. Check with sector supervisor.";
-
-    if (
-      normalizedMsg.includes("hurt") ||
-      normalizedMsg.includes("bleed") ||
-      normalizedMsg.includes("heart") ||
-      normalizedMsg.includes("medic") ||
-      normalizedMsg.includes("fall")
-    ) {
-      category = "Medical";
-      severity = "High";
-      assignedTo = "Medical Emergency Unit";
-      title = "Medical Incident Reported";
-      aiSuggestedProtocol =
-        "Evacuate space immediately around patient. Dispatch medics with transport stretcher. Notify Zone Steward.";
-    } else if (
-      normalizedMsg.includes("spill") ||
-      normalizedMsg.includes("water") ||
-      normalizedMsg.includes("leak") ||
-      normalizedMsg.includes("floor") ||
-      normalizedMsg.includes("stairs")
-    ) {
-      category = "Facilities";
-      severity = "Low";
-      assignedTo = "Custodial Team";
-      title = "Slip/Facilities Hazard";
-      aiSuggestedProtocol =
-        "Deploy physical hazard yellow cones. Clean liquid with dry absorbent compound. steward to monitor route.";
-    } else if (
-      normalizedMsg.includes("fight") ||
-      normalizedMsg.includes("bag") ||
-      normalizedMsg.includes("package") ||
-      normalizedMsg.includes("weapon") ||
-      normalizedMsg.includes("stolen")
-    ) {
-      category = "Security";
-      severity = normalizedMsg.includes("bag") ? "Critical" : "High";
-      assignedTo = "Tactical Security Squad";
-      title = "Security Alert";
-      aiSuggestedProtocol =
-        "Maintain a 50m safe boundary distance. DO NOT touch bag. Direct crowd streams away immediately. Await guard sweep.";
-    } else if (
-      normalizedMsg.includes("gate") ||
-      normalizedMsg.includes("crowd") ||
-      normalizedMsg.includes("stuck") ||
-      normalizedMsg.includes("jam")
-    ) {
-      category = "Crowd";
-      severity = "Medium";
-      assignedTo = "Crowd Control Marshals";
-      title = "Zone Crowding Congestion";
-      aiSuggestedProtocol =
-        "Pace entries utilizing rope cordons. Redirect incoming spectator lanes to adjacent empty gates.";
-    }
-
-    return {
-      category,
-      severity,
-      assignedTo,
-      title,
-      aiSuggestedProtocol,
-    };
-  }
-
-  if (requestType === "fan") {
-    let reply =
-      "I am processing your stadium operation request. Currently, Zone B is heavily congested, while Gates in Zones A and C are highly accessible.";
-    let route = [
-      "Proceed to central deck",
-      "Avoid Zone B elevators",
-      "Use Gate A3 for fast-track exit",
-    ];
-    let warning = null;
-    let transit =
-      "We recommend taking Downtown Shuttle Bus A, departing in 6 minutes, which is currently at 45% occupancy.";
-
-    if (
-      normalizedMsg.includes("toilet") ||
-      normalizedMsg.includes("restroom") ||
-      normalizedMsg.includes("concession") ||
-      normalizedMsg.includes("food") ||
-      normalizedMsg.includes("beer")
-    ) {
-      reply =
-        "The nearest major concession stalls and clean restrooms are located directly behind Zone A (North Concourse) and Zone C (East Concourse). Zone B facilities have lines exceeding 20 minutes currently.";
-      route = [
-        "Turn right at current deck",
-        "Follow signage to Section 104 restrooms",
-        "Zone C elevators available",
-      ];
-    } else if (
-      normalizedMsg.includes("leave") ||
-      normalizedMsg.includes("exit") ||
-      normalizedMsg.includes("transit") ||
-      normalizedMsg.includes("metro") ||
-      normalizedMsg.includes("go home")
-    ) {
-      reply =
-        "If you are leaving now, note that Metro Green Line 1 is extremely crowded (85% load) with minor queues. The Regional Rail is currently delayed by 18 minutes. For a faster, comfortable departure, we strongly suggest taking the Downtown Shuttle Bus A from Gate C3, which is running smoothly with 45% capacity.";
-      transit = "Downtown Shuttle Bus A via Gate C3 (eta 6 minutes)";
-    } else if (
-      normalizedMsg.includes("wheelchair") ||
-      normalizedMsg.includes("accessible") ||
-      normalizedMsg.includes("elevator") ||
-      context?.accessibility
-    ) {
-      reply =
-        "Welcome to Concord26 Accessibility Guide. Avoid the Zone B central concourse stairs as they are crowded. We have pre-routed you to use the accessible lift next to Gate D3 (West Concourse), leading directly to ADA Section 102. Stewards in yellow vests are posted there to assist.";
-      route = [
-        "Head west to Concourse D",
-        "Use the dedicated ADA elevator at Gate D3",
-        "Staff present at ramp entry",
-      ];
-      warning = "Stairwell 4B is congested; ADA elevator routing active.";
-    }
-
-    return {
-      text: reply,
-      recommendedRoute: route,
-      warning,
-      suggestedTransit: transit,
-    };
-  }
-
-  return {};
-}
-
 // ORCHESTRATOR API ENDPOINT
 app.post("/api/orchestrator", async (req, res) => {
   const { requestType, message, context } = req.body;
@@ -653,7 +518,7 @@ Analyze the volunteer report and return a JSON object with EXACTLY the following
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: AI_MODELS.GEMINI_FLASH,
         contents: `Incident report: "${message}"`,
         config: {
           systemInstruction,
@@ -747,7 +612,7 @@ Provide a structured JSON output with EXACTLY the following format:
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: AI_MODELS.GEMINI_FLASH,
         contents: `Fan message: "${message}" (Preferred language context: ${targetLanguage})`,
         config: {
           systemInstruction,
@@ -797,7 +662,7 @@ You must return a JSON object with EXACTLY the following structure:
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: AI_MODELS.GEMINI_FLASH,
         contents: `Operator command: "${message}"`,
         config: {
           systemInstruction,
@@ -867,7 +732,7 @@ Return a JSON with structure:
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: AI_MODELS.GEMINI_FLASH,
       contents: "Generate current sitrep overview line.",
       config: {
         systemInstruction,

@@ -303,7 +303,8 @@ describe("Cache - Edge Cases", () => {
     faqCache.set("undefined-value", undefined as any);
     const result = faqCache.get("undefined-value");
     // undefined is stored but should work
-    expect(result).toBeDefined();
+    expect(result).toBeUndefined();
+    expect(faqCache.has("undefined-value")).toBe(true);
   });
 
   it("should handle complex nested objects", () => {

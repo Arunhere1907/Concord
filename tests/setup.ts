@@ -12,3 +12,6 @@ process.env.GEMINI_API_KEY = "test-key";
 
 // Mock fetch globally
 global.fetch = vi.fn();
+
+// Mock scrollIntoView
+window.HTMLElement.prototype.scrollIntoView = function () {};
