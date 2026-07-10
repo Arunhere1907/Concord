@@ -1,0 +1,9 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/ops/situation-summary", "destination": "/api/ops/situation-summary" },
+    { "source": "/api/:path*", "destination": "/api/:path*" }
+  ]
+}
