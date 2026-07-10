@@ -13,7 +13,7 @@ process.env.GEMINI_API_KEY = "test-key";
 // Mock fetch globally
 global.fetch = vi.fn().mockResolvedValue({
   ok: true,
-  json: async () => ({})
+  json: async () => ({}),
 });
 
 // Mock scrollIntoView
