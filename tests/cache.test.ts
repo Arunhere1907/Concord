@@ -61,7 +61,6 @@ describe("Cache - TTL and Expiration", () => {
 
   afterEach(() => {
     faqCache.clear();
-    vi.runOnlyPendingTimers();
     vi.useRealTimers();
   });
 
@@ -119,7 +118,6 @@ describe("Cache - Cleanup", () => {
 
   afterEach(() => {
     faqCache.clear();
-    vi.runOnlyPendingTimers();
     vi.useRealTimers();
   });
 
