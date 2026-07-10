@@ -1,9 +1,23 @@
 import React, { useState } from "react";
 import { Zone, Gate, VolunteerTask, Incident } from "../types";
-import { 
-  Send, User, MapPin, AlertTriangle, CheckSquare, 
-  Clock, Shield, Plus, Camera, Sparkles, Check, 
-  RotateCw, RefreshCw, FileText, HelpCircle, Activity, ClipboardList
+import {
+  Send,
+  User,
+  MapPin,
+  AlertTriangle,
+  CheckSquare,
+  Clock,
+  Shield,
+  Plus,
+  Camera,
+  Sparkles,
+  Check,
+  RotateCw,
+  RefreshCw,
+  FileText,
+  HelpCircle,
+  Activity,
+  ClipboardList,
 } from "lucide-react";
 
 interface VolunteerAppProps {
@@ -17,10 +31,30 @@ interface VolunteerAppProps {
 
 // Mock photos for visual simulation in hackathon demo
 const MOCK_PHOTOS = [
-  { id: "spill", name: "💦 Spill Floor Hazard", text: "Liquid spill with slippery surface on stairways sector 4B", category: "Facilities" },
-  { id: "bag", name: "🎒 Unattended Bag", text: "Black unattended nylon sports bag found abandoned underneath Gate B2 seating bench", category: "Security" },
-  { id: "medical", name: "🤕 Heat Exhaustion", text: "Fainted adult spectator displaying signs of exhaustion near Entrance Gate A2 concourse line", category: "Medical" },
-  { id: "crowd", name: "🚧 Gate Congestion", text: "Turnstile Gate B1 card scanners malfunctioning, causing queue to overflow into staging plaza", category: "Crowd" }
+  {
+    id: "spill",
+    name: "💦 Spill Floor Hazard",
+    text: "Liquid spill with slippery surface on stairways sector 4B",
+    category: "Facilities",
+  },
+  {
+    id: "bag",
+    name: "🎒 Unattended Bag",
+    text: "Black unattended nylon sports bag found abandoned underneath Gate B2 seating bench",
+    category: "Security",
+  },
+  {
+    id: "medical",
+    name: "🤕 Heat Exhaustion",
+    text: "Fainted adult spectator displaying signs of exhaustion near Entrance Gate A2 concourse line",
+    category: "Medical",
+  },
+  {
+    id: "crowd",
+    name: "🚧 Gate Congestion",
+    text: "Turnstile Gate B1 card scanners malfunctioning, causing queue to overflow into staging plaza",
+    category: "Crowd",
+  },
 ];
 
 export default function VolunteerApp({
@@ -28,7 +62,7 @@ export default function VolunteerApp({
   gates,
   volunteerTasks,
   onTaskUpdate,
-  onNewIncident
+  onNewIncident,
 }: VolunteerAppProps) {
   // Incident submission state
   const [reportLocation, setReportLocation] = useState("Zone B Concourse");
@@ -46,7 +80,7 @@ export default function VolunteerApp({
   const [activeSubTab, setActiveSubTab] = useState<"report" | "tasks" | "sop">("report");
 
   // Select mock report template
-  const handleSelectPhotoSim = (photo: typeof MOCK_PHOTOS[0]) => {
+  const handleSelectPhotoSim = (photo: (typeof MOCK_PHOTOS)[0]) => {
     setSelectedPhotoSim(photo.id);
     setReportText(photo.text);
   };
@@ -68,9 +102,9 @@ export default function VolunteerApp({
           message: reportText,
           context: {
             location: reportLocation,
-            userId: "Vol_Field_341"
-          }
-        })
+            userId: "Vol_Field_341",
+          },
+        }),
       });
 
       const data = await response.json();
@@ -88,18 +122,22 @@ export default function VolunteerApp({
           location: reportLocation,
           createdAt: new Date().toISOString(),
           aiSuggestedProtocol: data.aiSuggestedProtocol,
-          assignedTo: data.assignedTo
+          assignedTo: data.assignedTo,
         };
 
         const newTask: VolunteerTask = {
           id: `task-${newIncident.id}`,
           title: `Dispatch: ${data.title || data.category} (${data.severity})`,
-          zoneId: reportLocation.includes("Zone A") ? "zone-a" :
-                  reportLocation.includes("Zone B") ? "zone-b" :
-                  reportLocation.includes("Zone C") ? "zone-c" : "zone-d",
+          zoneId: reportLocation.includes("Zone A")
+            ? "zone-a"
+            : reportLocation.includes("Zone B")
+              ? "zone-b"
+              : reportLocation.includes("Zone C")
+                ? "zone-c"
+                : "zone-d",
           description: `Field Alert: ${reportText}. Location: ${reportLocation}. Protocol: ${data.aiSuggestedProtocol}`,
           status: "pending",
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
 
         if (onNewIncident) {
@@ -119,7 +157,8 @@ export default function VolunteerApp({
         severity: "Low",
         assignedTo: "Custodial Team",
         title: "Facilities Maintenance Report",
-        aiSuggestedProtocol: "Deploy yellow warning cones immediately. Clean liquid with mop and drying compounds. Maintain safety watch."
+        aiSuggestedProtocol:
+          "Deploy yellow warning cones immediately. Clean liquid with mop and drying compounds. Maintain safety watch.",
       });
     } finally {
       setIsSubmitting(false);
@@ -142,9 +181,9 @@ export default function VolunteerApp({
           requestType: "ops", // Ground on SOP docs
           message: `Provide exact SOP steps for: ${sopQuery}`,
           context: {
-            isSopLookup: true
-          }
-        })
+            isSopLookup: true,
+          },
+        }),
       });
 
       const data = await response.json();
@@ -154,7 +193,9 @@ export default function VolunteerApp({
         throw new Error();
       }
     } catch (err) {
-      setSopAnswer("General protocol guidelines: Keep calm. Secure perimeter and notify Command Center. Ensure direct paths are open for emergency dispatch teams.");
+      setSopAnswer(
+        "General protocol guidelines: Keep calm. Secure perimeter and notify Command Center. Ensure direct paths are open for emergency dispatch teams."
+      );
     } finally {
       setIsSopLoading(false);
     }
@@ -170,8 +211,12 @@ export default function VolunteerApp({
               <Shield className="w-4 h-4" />
             </div>
             <div>
-              <h1 className="font-display font-bold text-xs text-slate-800 tracking-tight">C26 Volunteer Hub</h1>
-              <span className="text-[9px] text-emerald-600 font-mono font-bold block uppercase tracking-wider">Staff Operations Portal</span>
+              <h1 className="font-display font-bold text-xs text-slate-800 tracking-tight">
+                C26 Volunteer Hub
+              </h1>
+              <span className="text-[9px] text-emerald-600 font-mono font-bold block uppercase tracking-wider">
+                Staff Operations Portal
+              </span>
             </div>
           </div>
           <span className="text-[9px] text-emerald-700 font-mono flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-bold">
@@ -185,8 +230,8 @@ export default function VolunteerApp({
           <button
             onClick={() => setActiveSubTab("report")}
             className={`flex-1 py-1.5 rounded-lg text-center font-display font-bold text-xs transition-all cursor-pointer ${
-              activeSubTab === "report" 
-                ? "bg-emerald-500 text-white shadow-md font-bold" 
+              activeSubTab === "report"
+                ? "bg-emerald-500 text-white shadow-md font-bold"
                 : "bg-slate-50 text-slate-500 hover:text-slate-700 border border-slate-200"
             }`}
             id="vol-tab-report"
@@ -196,24 +241,28 @@ export default function VolunteerApp({
           <button
             onClick={() => setActiveSubTab("tasks")}
             className={`flex-1 py-1.5 rounded-lg text-center font-display font-bold text-xs transition-all cursor-pointer relative ${
-              activeSubTab === "tasks" 
-                ? "bg-emerald-500 text-white shadow-md font-bold" 
+              activeSubTab === "tasks"
+                ? "bg-emerald-500 text-white shadow-md font-bold"
                 : "bg-slate-50 text-slate-500 hover:text-slate-700 border border-slate-200"
             }`}
             id="vol-tab-tasks"
           >
             📋 Tasks Queue
-            {volunteerTasks.filter(t => t.status === "pending" || t.status === "in-progress").length > 0 && (
+            {volunteerTasks.filter(t => t.status === "pending" || t.status === "in-progress")
+              .length > 0 && (
               <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold font-mono px-1.5 py-0.2 rounded-full border border-white">
-                {volunteerTasks.filter(t => t.status === "pending" || t.status === "in-progress").length}
+                {
+                  volunteerTasks.filter(t => t.status === "pending" || t.status === "in-progress")
+                    .length
+                }
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveSubTab("sop")}
             className={`flex-1 py-1.5 rounded-lg text-center font-display font-bold text-xs transition-all cursor-pointer ${
-              activeSubTab === "sop" 
-                ? "bg-emerald-500 text-white shadow-md font-bold" 
+              activeSubTab === "sop"
+                ? "bg-emerald-500 text-white shadow-md font-bold"
                 : "bg-slate-50 text-slate-500 hover:text-slate-700 border border-slate-200"
             }`}
             id="vol-tab-sop"
@@ -225,12 +274,13 @@ export default function VolunteerApp({
 
       {/* Main Body */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        
         {/* TAB 1: SUBMIT REPORT */}
         {activeSubTab === "report" && (
           <div className="space-y-3">
-            
-            <form onSubmit={handleSubmitReport} className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-sm">
+            <form
+              onSubmit={handleSubmitReport}
+              className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-sm"
+            >
               <h3 className="font-display text-xs font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-1.5 uppercase tracking-wider text-[11px]">
                 <AlertTriangle className="w-4 h-4 text-rose-500" />
                 Quick Incident & Hazard Report
@@ -238,10 +288,12 @@ export default function VolunteerApp({
 
               {/* Location Select */}
               <div className="space-y-1">
-                <label className="text-[9px] text-slate-400 font-mono uppercase tracking-wider block font-bold">Incident Location</label>
+                <label className="text-[9px] text-slate-400 font-mono uppercase tracking-wider block font-bold">
+                  Incident Location
+                </label>
                 <select
                   value={reportLocation}
-                  onChange={(e) => setReportLocation(e.target.value)}
+                  onChange={e => setReportLocation(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 rounded p-2 text-xs text-slate-700 font-bold focus:outline-none"
                   id="vol-report-location"
                 >
@@ -262,7 +314,7 @@ export default function VolunteerApp({
                   Simulate Camera Photo (Optional)
                 </label>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {MOCK_PHOTOS.map((photo) => (
+                  {MOCK_PHOTOS.map(photo => (
                     <button
                       key={photo.id}
                       type="button"
@@ -282,10 +334,12 @@ export default function VolunteerApp({
 
               {/* Description Input */}
               <div className="space-y-1">
-                <label className="text-[9px] text-slate-400 font-mono uppercase tracking-wider block font-bold">Description Details</label>
+                <label className="text-[9px] text-slate-400 font-mono uppercase tracking-wider block font-bold">
+                  Description Details
+                </label>
                 <textarea
                   value={reportText}
-                  onChange={(e) => {
+                  onChange={e => {
                     setReportText(e.target.value);
                     setSelectedPhotoSim(null); // break mock lock
                   }}
@@ -332,29 +386,47 @@ export default function VolunteerApp({
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="bg-slate-50 p-2 rounded border border-slate-200">
-                    <span className="text-[9px] text-slate-400 uppercase block font-bold">AI Category</span>
+                    <span className="text-[9px] text-slate-400 uppercase block font-bold">
+                      AI Category
+                    </span>
                     <span className="font-bold text-slate-700">{triageResult.category}</span>
                   </div>
                   <div className="bg-slate-50 p-2 rounded border border-slate-200">
-                    <span className="text-[9px] text-slate-400 uppercase block font-bold">Severity Triage</span>
-                    <span className={`font-extrabold ${
-                      triageResult.severity === "Critical" ? "text-rose-600 animate-pulse" :
-                      triageResult.severity === "High" ? "text-rose-500" :
-                      triageResult.severity === "Medium" ? "text-amber-600" : "text-emerald-600"
-                    }`}>{triageResult.severity}</span>
+                    <span className="text-[9px] text-slate-400 uppercase block font-bold">
+                      Severity Triage
+                    </span>
+                    <span
+                      className={`font-extrabold ${
+                        triageResult.severity === "Critical"
+                          ? "text-rose-600 animate-pulse"
+                          : triageResult.severity === "High"
+                            ? "text-rose-500"
+                            : triageResult.severity === "Medium"
+                              ? "text-amber-600"
+                              : "text-emerald-600"
+                      }`}
+                    >
+                      {triageResult.severity}
+                    </span>
                   </div>
                   <div className="col-span-2 bg-slate-50 p-2 rounded border border-slate-200">
-                    <span className="text-[9px] text-slate-400 uppercase block font-bold">Dispatched Department</span>
+                    <span className="text-[9px] text-slate-400 uppercase block font-bold">
+                      Dispatched Department
+                    </span>
                     <span className="font-bold text-slate-700">{triageResult.assignedTo}</span>
                   </div>
                 </div>
 
                 <div className="bg-emerald-50/50 border border-emerald-100 p-2.5 rounded space-y-1">
-                  <span className="text-[9px] text-emerald-600 uppercase block font-bold font-mono">SOP Action Protocol</span>
-                  <p className="text-[11px] text-slate-700 leading-relaxed font-semibold">{triageResult.aiSuggestedProtocol}</p>
+                  <span className="text-[9px] text-emerald-600 uppercase block font-bold font-mono">
+                    SOP Action Protocol
+                  </span>
+                  <p className="text-[11px] text-slate-700 leading-relaxed font-semibold">
+                    {triageResult.aiSuggestedProtocol}
+                  </p>
                 </div>
 
-                <button 
+                <button
                   onClick={() => setTriageResult(null)}
                   className="w-full bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 py-1.5 rounded text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer"
                   id="vol-clear-triage"
@@ -363,7 +435,6 @@ export default function VolunteerApp({
                 </button>
               </div>
             )}
-
           </div>
         )}
 
@@ -386,12 +457,12 @@ export default function VolunteerApp({
               </div>
             ) : (
               <div className="space-y-2.5">
-                {volunteerTasks.map((task) => (
-                  <div 
-                    key={task.id} 
+                {volunteerTasks.map(task => (
+                  <div
+                    key={task.id}
                     className={`bg-white border rounded-xl p-3 space-y-2.5 transition-all shadow-sm ${
-                      task.status === "completed" 
-                        ? "border-slate-200 opacity-60 bg-slate-50/30" 
+                      task.status === "completed"
+                        ? "border-slate-200 opacity-60 bg-slate-50/30"
                         : "border-slate-200 hover:border-slate-300"
                     }`}
                   >
@@ -399,17 +470,26 @@ export default function VolunteerApp({
                       <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[9px] font-mono font-bold text-slate-500">
                         Task #{task.id.replace("task-", "")}
                       </span>
-                      <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded uppercase ${
-                        task.status === "completed" ? "text-slate-500 bg-slate-100" :
-                        task.status === "in-progress" ? "text-amber-700 bg-amber-50 border border-amber-200 animate-pulse" : "text-rose-700 bg-rose-50 border border-rose-200"
-                      }`}>
+                      <span
+                        className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded uppercase ${
+                          task.status === "completed"
+                            ? "text-slate-500 bg-slate-100"
+                            : task.status === "in-progress"
+                              ? "text-amber-700 bg-amber-50 border border-amber-200 animate-pulse"
+                              : "text-rose-700 bg-rose-50 border border-rose-200"
+                        }`}
+                      >
                         {task.status}
                       </span>
                     </div>
 
                     <div className="space-y-1">
-                      <h4 className="font-display font-bold text-xs text-slate-800">{task.title}</h4>
-                      <p className="text-[11px] text-slate-500 leading-normal font-medium">{task.description}</p>
+                      <h4 className="font-display font-bold text-xs text-slate-800">
+                        {task.title}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 leading-normal font-medium">
+                        {task.description}
+                      </p>
                     </div>
 
                     {/* Task Actions */}
@@ -444,20 +524,24 @@ export default function VolunteerApp({
         {/* TAB 3: SOP PROCEDURES LOOKUP */}
         {activeSubTab === "sop" && (
           <div className="space-y-3">
-            <form onSubmit={handleSopSearch} className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-sm">
+            <form
+              onSubmit={handleSopSearch}
+              className="bg-white border border-slate-200 rounded-xl p-3 space-y-3 shadow-sm"
+            >
               <h3 className="font-display text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1">
                 <FileText className="w-4 h-4 text-emerald-500" />
                 SOP Guidelines Database
               </h3>
               <p className="text-[11px] text-slate-400 leading-normal font-medium">
-                Search our internal FIFA World Cup SOP document repository. Gemini will query guidelines and return matching steps.
+                Search our internal FIFA World Cup SOP document repository. Gemini will query
+                guidelines and return matching steps.
               </p>
 
               <div className="space-y-1">
                 <input
                   type="text"
                   value={sopQuery}
-                  onChange={(e) => setSopQuery(e.target.value)}
+                  onChange={e => setSopQuery(e.target.value)}
                   placeholder="e.g., 'suspicious package' or 'lost child'..."
                   className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 rounded p-2 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                   id="vol-sop-search-input"
@@ -499,7 +583,6 @@ export default function VolunteerApp({
             )}
           </div>
         )}
-
       </div>
 
       {/* Touch Targets Footer */}

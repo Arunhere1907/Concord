@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenAI, Type } from '@google/genai';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { GoogleGenAI, Type } from "@google/genai";
 
 let ai: GoogleGenAI | null = null;
 const apiKey = process.env.GEMINI_API_KEY;
@@ -21,7 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const highLoadGates = gates.filter((g: any) => g.currentLoad > 80);
 
     if (!ai) {
-      const congestionZone = zones.find((z: any) => z.status === "congested" || z.status === "critical");
+      const congestionZone = zones.find(
+        (z: any) => z.status === "congested" || z.status === "critical"
+      );
       const congestionPct = congestionZone
         ? Math.round((congestionZone.currentCount / congestionZone.capacity) * 100)
         : 0;
@@ -31,8 +33,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : `All stadium operations are running smoothly. ${activeIncidents.length} active incident(s). All gates within normal load parameters.`;
 
       const alerts = [
-        highLoadGates.length > 0 ? `Monitor ${highLoadGates.map((g: any) => g.name).join(", ")} crowd pacing` : "All gates nominal",
-        activeIncidents.length > 0 ? `${activeIncidents.length} incident(s) in progress` : "No active incidents"
+        highLoadGates.length > 0
+          ? `Monitor ${highLoadGates.map((g: any) => g.name).join(", ")} crowd pacing`
+          : "All gates nominal",
+        activeIncidents.length > 0
+          ? `${activeIncidents.length} incident(s) in progress`
+          : "No active incidents",
       ];
 
       res.json({ summary, alerts, engine: "Rule-based Ops Evaluator" });
@@ -63,22 +69,22 @@ Return a JSON with structure:
           type: Type.OBJECT,
           properties: {
             summary: { type: Type.STRING },
-            alerts: { type: Type.ARRAY, items: { type: Type.STRING } }
+            alerts: { type: Type.ARRAY, items: { type: Type.STRING } },
           },
-          required: ["summary", "alerts"]
-        }
-      }
+          required: ["summary", "alerts"],
+        },
+      },
     });
 
     const parsed = JSON.parse(response.text || "{}");
     res.json({ ...parsed, engine: "Gemini 2.0 Flash" });
-
   } catch (err: any) {
     console.error("Error generating ops summary:", err);
     res.json({
-      summary: "Zone B (South) remains highly congested. Active water spill hazard reported at Stairwell 4B is in custodial cleanup.",
+      summary:
+        "Zone B (South) remains highly congested. Active water spill hazard reported at Stairwell 4B is in custodial cleanup.",
       alerts: ["Monitor Gate B2 crowd load", "Direct overflow arrivals to Gate B3 or Gate A"],
-      engine: "Fallback Summary"
+      engine: "Fallback Summary",
     });
   }
 }

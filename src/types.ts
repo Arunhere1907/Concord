@@ -3,7 +3,7 @@ export interface Zone {
   name: string;
   currentCount: number;
   capacity: number;
-  status: 'normal' | 'congested' | 'critical';
+  status: "normal" | "congested" | "critical";
 }
 
 export interface Gate {
@@ -12,17 +12,17 @@ export interface Gate {
   name: string;
   currentLoad: number; // 0 to 100 percentage
   capacity: number;
-  status: 'open' | 'warning' | 'closed';
+  status: "open" | "warning" | "closed";
 }
 
 export interface Incident {
   id: string;
   reportedBy: string;
   title?: string;
-  category: 'Medical' | 'Safety' | 'Facilities' | 'Security' | 'Crowd';
-  severity: 'Low' | 'Medium' | 'High' | 'Critical';
+  category: "Medical" | "Safety" | "Facilities" | "Security" | "Crowd";
+  severity: "Low" | "Medium" | "High" | "Critical";
   description: string;
-  status: 'reported' | 'acknowledged' | 'dispatched' | 'resolved';
+  status: "reported" | "acknowledged" | "dispatched" | "resolved";
   location: string; // e.g., "Gate B2" or "Zone A Concourse"
   createdAt: string;
   aiSuggestedProtocol?: string;
@@ -35,7 +35,7 @@ export interface TransitOption {
   capacity: number; // occupancy percentage
   nextDeparture: string; // e.g. "5 mins"
   etaMinutes: number;
-  status: 'normal' | 'delayed' | 'crowded';
+  status: "normal" | "delayed" | "crowded";
 }
 
 export interface VolunteerTask {
@@ -43,7 +43,7 @@ export interface VolunteerTask {
   title: string;
   zoneId: string;
   description: string;
-  status: 'pending' | 'in-progress' | 'completed';
+  status: "pending" | "in-progress" | "completed";
   assignedTo?: string;
   createdAt: string;
 }

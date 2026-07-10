@@ -3,22 +3,27 @@
  * Reduces AI API calls for repeated queries
  */
 
+import { CACHE_TTL } from "./constants";
+
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
 }
 
-class SimpleCache<T = any> {
+/**
+ * Generic cache implementation with TTL support
+ */
+class SimpleCache<T = unknown> {
   private store: Map<string, CacheEntry<T>> = new Map();
   private defaultTTL: number;
+  private readonly maxStoreSize = 1000;
 
-  constructor(defaultTTLSeconds: number = 300) {
-    // Default 5 minutes
+  constructor(defaultTTLSeconds: number = CACHE_TTL.ORCHESTRATOR) {
     this.defaultTTL = defaultTTLSeconds * 1000;
   }
 
   /**
-   * Set a cache entry
+   * Set a cache entry with optional custom TTL
    */
   set(key: string, value: T, ttlSeconds?: number): void {
     const ttl = ttlSeconds ? ttlSeconds * 1000 : this.defaultTTL;
@@ -29,8 +34,8 @@ class SimpleCache<T = any> {
       expiresAt,
     });
 
-    // Periodic cleanup
-    if (this.store.size > 1000) {
+    // Periodic cleanup to prevent memory leaks
+    if (this.store.size > this.maxStoreSize) {
       this.cleanup();
     }
   }
@@ -108,23 +113,28 @@ class SimpleCache<T = any> {
 }
 
 // Export singleton instances for different cache types
-export const faqCache = new SimpleCache<any>(600); // 10 minutes for FAQs
-export const orchestratorCache = new SimpleCache<any>(300); // 5 minutes for orchestrator responses
-export const stadiumStateCache = new SimpleCache<any>(10); // 10 seconds for stadium state
+export const faqCache = new SimpleCache<Record<string, unknown>>(CACHE_TTL.FAQ);
+export const orchestratorCache = new SimpleCache<Record<string, unknown>>(CACHE_TTL.ORCHESTRATOR);
+export const stadiumStateCache = new SimpleCache<Record<string, unknown>>(CACHE_TTL.STADIUM_STATE);
 
 /**
  * Generate cache key for orchestrator requests
+ * Creates a unique key based on request type, message, and context
  */
-export function generateCacheKey(requestType: string, message: string, context?: any): string {
+export function generateCacheKey(
+  requestType: string,
+  message: string,
+  context?: Record<string, unknown>
+): string {
   // Normalize the message
   const normalized = message.toLowerCase().trim();
 
   // For FAQ-style queries, use normalized message
   if (requestType === "fan") {
     // Extract language from context
-    const lang = context?.language || "English";
+    const language = (context?.language as string) || "English";
     const accessibility = context?.accessibility ? "ada" : "normal";
-    return `fan:${lang}:${accessibility}:${normalized}`;
+    return `fan:${language}:${accessibility}:${normalized}`;
   }
 
   // For volunteer/ops, include more context
@@ -133,6 +143,7 @@ export function generateCacheKey(requestType: string, message: string, context?:
 
 /**
  * Check if a query is FAQ-like (cacheable)
+ * Identifies common repeated queries that can be cached
  */
 export function isCacheableQuery(requestType: string, message: string): boolean {
   if (requestType !== "fan") {
@@ -142,7 +153,7 @@ export function isCacheableQuery(requestType: string, message: string): boolean 
 
   const normalized = message.toLowerCase();
 
-  // Common FAQ patterns
+  // Common FAQ patterns that are safe to cache
   const faqPatterns = [
     /where.*restroom/i,
     /where.*bathroom/i,
@@ -161,16 +172,17 @@ export function isCacheableQuery(requestType: string, message: string): boolean 
 
 /**
  * Decorator function to add caching to async functions
+ * Wraps a function to automatically cache its results
  */
 export function withCache<T>(
   cache: SimpleCache<T>,
-  keyGenerator: (...args: any[]) => string,
+  keyGenerator: (...args: unknown[]) => string,
   ttlSeconds?: number
 ) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       const key = keyGenerator(...args);
 
       // Check cache first
