@@ -178,7 +178,7 @@ describe("Orchestrator API Handler", () => {
 
   it("should enforce rate limiting", async () => {
     const clientHeaders = { "x-forwarded-for": "rate-limit-test-client" };
-    let lastStatus = HTTP_STATUS.OK;
+    let lastStatus: number = HTTP_STATUS.OK;
 
     for (let i = 0; i < RATE_LIMIT.MAX_REQUESTS + 1; i++) {
       const req = createMockRequest({

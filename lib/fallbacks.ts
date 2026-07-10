@@ -158,11 +158,11 @@ export function generateLocalFallbacks(
   const normalizedMessage = message.toLowerCase();
 
   if (requestType === "volunteer") {
-    return classifyVolunteerIncident(normalizedMessage);
+    return classifyVolunteerIncident(normalizedMessage) as unknown as Record<string, unknown>;
   }
 
   if (requestType === "fan") {
-    return generateFanResponse(normalizedMessage, context);
+    return generateFanResponse(normalizedMessage, context) as unknown as Record<string, unknown>;
   }
 
   return {};

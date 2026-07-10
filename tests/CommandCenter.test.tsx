@@ -19,7 +19,7 @@ const mockIncidents = [
   {
     id: "inc-1",
     reportedBy: "Vol 1",
-    category: "Safety",
+    category: "Safety" as const,
     severity: "High" as const,
     description: "Mock Incident",
     status: "reported" as const,
